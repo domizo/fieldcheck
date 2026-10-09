@@ -45,7 +45,7 @@ python3 -m fieldcheck fixtures/baseline.jsonl
 
 ## 確認済みの結果
 
-現在のローカル検証では、Python 3.14.8でテスト37件が成功し、ベースライン9件すべてを受け入れ、意図的に壊した4件すべてを検出しました。RuffによるLint・フォーマット確認と、厳格なmypy型チェックも通っています。[CIワークフロー](https://github.com/domizo/fieldcheck/actions/workflows/ci.yml)はUbuntu上のPython 3.11・3.14を検査します。[検証記録](docs/verification.md)には、初回CIの25件と、契約検証に追加した回帰テストを区別して記載しています。[依存関係・開発用チェック](DEPENDENCIES.md)と[日本語の技術解説](docs/walkthrough.ja.md)も参照してください。
+現在のローカル検証では、Python 3.14.8でテスト37件が成功し、ベースライン9件すべてを受け入れ、意図的に壊した4件すべてを検出しました。RuffによるLint・フォーマット確認と、厳格なmypy型チェックも通っています。[CIワークフロー](https://github.com/domizo/fieldcheck/actions/workflows/ci.yml)はUbuntu上のPython 3.11・3.14を検査します。[検証記録](docs/verification.md)には、37件のCI成功と、契約検証に追加した回帰テストを記載しています。[依存関係・開発用チェック](DEPENDENCIES.md)と[日本語の技術解説](docs/walkthrough.ja.md)も参照してください。
 
 ## 未実装の範囲と制約
 
@@ -53,4 +53,4 @@ python3 -m fieldcheck fixtures/baseline.jsonl
 
 Fieldcheckが検査するのは、出力された**納品ファイル一覧とハッシュ**です。実際の納品ファイルの内容は、Switchyardの結合テストとダウンロードAPIが検証します。
 
-形式が正しい応答であっても、内容が事実として正しいことを証明するものではありません。プロジェクトのライセンスは未選択です。
+形式が正しい応答であっても、内容が事実として正しいことを証明するものではありません。[MITライセンス](LICENSE)を適用しています。依存パッケージには、それぞれのライセンスが適用されます。

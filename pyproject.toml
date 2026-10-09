@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "A dependency-free offline evaluator for versioned AI workflow traces"
 requires-python = ">=3.11"
 dependencies = []
+license = "MIT"
 
 [tool.fieldcheck]
 contract = "switchyard.run.v1"

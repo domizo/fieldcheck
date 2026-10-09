@@ -1,4 +1,4 @@
-Runtime: Python standard library only; no pip install, lockfile, API account, key, or provider access is needed. Python 3.11+ is supported by the source; the local verification used Python 3.14.8. The [Ubuntu CI matrix for Python 3.11 and 3.14](https://github.com/domizo/fieldcheck/actions/runs/37884067927) passed on 2026-10-09.
+Runtime: Python standard library only; no pip install, lockfile, API account, key, or provider access is needed. Python 3.11+ is supported by the source; the local verification used Python 3.14.8. The [Ubuntu CI matrix for Python 3.11 and 3.14](https://github.com/domizo/fieldcheck/actions/runs/37888544940) passed on 2026-10-09.
 
 `pyproject.toml` records the zero-dependency runtime contract. Tests use `unittest`. Checksums use `hashlib`; JSON and CLI parsing use the standard library. A packaging backend is intentionally absent: run the module directly from this repository.
 
