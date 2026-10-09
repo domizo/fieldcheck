@@ -30,9 +30,13 @@ def bounded_depth(value: Any) -> None:
         if depth > 64:
             raise ValueError("JSON nesting exceeds 64 levels")
         if isinstance(current, dict):
+            for key in current:
+                key.encode("utf-8")
             pending.extend((child, depth + 1) for child in current.values())
         elif isinstance(current, list):
             pending.extend((child, depth + 1) for child in current)
+        elif isinstance(current, str):
+            current.encode("utf-8")
 
 
 def main() -> int:

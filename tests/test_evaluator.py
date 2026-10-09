@@ -124,6 +124,107 @@ class EvaluatorTests(unittest.TestCase):
         case["run"]["revision"] = True
         self.assert_failed(case, "contract")
 
+    def test_integer_limits_match_the_export_contract(self):
+        for key in ["revision", "round"]:
+            with self.subTest(field=key):
+                case = self.case()
+                case["run"][key] = 9007199254740992
+                self.assert_failed(case, "contract")
+
+    def test_timestamps_require_the_contract_utc_form(self):
+        for value in [
+            "2026-10-09 03:52:25+09:00",
+            "2026-10-09T03:52:25+00:00",
+            "2026-10-09T03:52:25Zjunk",
+            "2023-02-29T03:52:25Z",
+        ]:
+            with self.subTest(timestamp=value):
+                case = self.case()
+                case["run"]["createdAt"] = value
+                self.assert_failed(case, "contract")
+
+    def test_invalid_uuid_variant_is_rejected(self):
+        case = self.case()
+        parts = case["run"]["id"].split("-")
+        parts[3] = "0" + parts[3][1:]
+        case["run"]["id"] = "-".join(parts)
+        self.assert_failed(case, "contract")
+
+    def test_uppercase_uuid_and_valid_leap_date_are_accepted(self):
+        case = self.case()
+        case["run"]["id"] = case["run"]["id"].upper()
+        case["run"]["createdAt"] = "2024-02-29T03:52:25.000Z"
+        self.assertTrue(evaluate(case).passed)
+
+    def test_string_limits_use_the_producers_utf16_length(self):
+        for field in ["summary", "finding"]:
+            with self.subTest(field=field):
+                case = self.case()
+                if field == "summary":
+                    case["run"]["review"]["summary"] = "🧪" * 251
+                else:
+                    case["run"]["review"]["findings"][0]["message"] = "🧪" * 151
+                self.assert_failed(case, "contract")
+
+    def test_reviewed_states_require_success_for_the_current_input(self):
+        for name in ["healthy", "completed-bundle", "approval-invalidated"]:
+            with self.subTest(case=name):
+                case = self.case(name)
+                run = case["run"]
+                last = run["attempts"][-1]
+                last["outcome"] = "unavailable"
+                event = next(
+                    event
+                    for event in reversed(run["audit"])
+                    if event["event"] == "provider.attempt"
+                )
+                event["result"] = f"{last['provider']}: unavailable"
+                self.assert_failed(case, "state_consistency")
+
+    def test_reviewed_state_requires_the_current_approval_request(self):
+        case = self.case()
+        case["run"]["audit"][-1]["event"] = "review.failed"
+        self.assert_failed(case, "state_consistency")
+
+    def test_rejected_state_requires_a_rejection_event(self):
+        case = self.case()
+        case["run"]["status"] = "rejected"
+        case["expected"]["status"] = "rejected"
+        self.assert_failed(case, "state_consistency")
+
+    def test_approval_cannot_precede_the_current_review_request(self):
+        case = self.case("completed-bundle")
+        audit = case["run"]["audit"]
+        grant = next(event for event in audit if event["event"] == "approval.granted")
+        audit.remove(grant)
+        request_index = next(
+            i for i, event in enumerate(audit) if event["event"] == "approval.requested"
+        )
+        audit.insert(request_index, grant)
+        for i, event in enumerate(audit, 1):
+            event["seq"] = i
+        self.assert_failed(case, "state_consistency")
+
+    def test_valid_approved_and_rejected_checkpoints_are_accepted(self):
+        approved = self.case("completed-bundle")
+        approved["run"]["status"] = approved["expected"]["status"] = "approved"
+        approved["run"]["delivery"] = None
+        approved["run"]["audit"].pop()
+        self.assertTrue(evaluate(approved).passed)
+
+        rejected = self.case()
+        run = rejected["run"]
+        run["status"] = rejected["expected"]["status"] = "rejected"
+        run["audit"].append(
+            {
+                **run["audit"][-1],
+                "seq": len(run["audit"]) + 1,
+                "event": "approval.rejected",
+                "result": "rejected",
+            }
+        )
+        self.assertTrue(evaluate(rejected).passed)
+
     def test_missing_motion_fails_without_crashing(self):
         case = self.case()
         case["run"]["manifest"]["assets"][1]["id"] = "other"
@@ -199,6 +300,30 @@ class CliTests(unittest.TestCase):
             line = json.dumps(CASES[0])
             source.write_text(line + "\n" + line + "\n")
             self.assertEqual(self.invoke(source).returncode, 2)
+
+    def test_invalid_unicode_exits_two_without_a_traceback(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "invalid-unicode.jsonl"
+            output = Path(directory) / "report.json"
+            case = deepcopy(CASES[0])
+            case["caseId"] = "invalid-\ud800"
+            source.write_text(json.dumps(case) + "\n")
+            result = self.invoke(source, "--output", str(output))
+            self.assertEqual(result.returncode, 2)
+            self.assertNotIn("Traceback", result.stderr)
+            self.assertFalse(output.exists())
+
+    def test_valid_unicode_case_id_is_written_to_the_report(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "unicode.jsonl"
+            output = Path(directory) / "report.json"
+            case = deepcopy(CASES[0])
+            case["caseId"] = "検証-🧪"
+            source.write_text(json.dumps(case) + "\n")
+            result = self.invoke(source, "--output", str(output))
+            self.assertEqual(result.returncode, 0, result.stderr)
+            report = json.loads(output.read_text())
+            self.assertEqual(report["results"][0]["case_id"], "検証-🧪")
 
     def test_report_write_error_is_reported(self):
         with tempfile.TemporaryDirectory() as directory:

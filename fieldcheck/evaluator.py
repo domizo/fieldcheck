@@ -11,6 +11,16 @@ from hashlib import sha256
 from typing import Any
 
 CONTRACT = "switchyard.run.v1"
+MAX_SAFE_INTEGER = 9007199254740991
+UUID_PATTERN = re.compile(
+    r"(?:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-"
+    r"[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|"
+    r"00000000-0000-0000-0000-000000000000|"
+    r"ffffffff-ffff-ffff-ffff-ffffffffffff)"
+)
+UTC_TIMESTAMP_PATTERN = re.compile(
+    r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\.[0-9]+)?Z"
+)
 STATUSES = {
     "reviewing",
     "awaiting_approval",
@@ -92,11 +102,16 @@ def is_hash(value: Any) -> bool:
 
 
 def integer(value: Any, minimum: int = 0) -> bool:
-    return type(value) is int and value >= minimum
+    return type(value) is int and minimum <= value <= MAX_SAFE_INTEGER
+
+
+def utf16_length(value: str) -> int:
+    """Match JavaScript/Zod string bounds for valid Unicode scalar values."""
+    return len(value.encode("utf-16-le")) // 2
 
 
 def timestamp(value: Any) -> bool:
-    if not isinstance(value, str):
+    if not isinstance(value, str) or UTC_TIMESTAMP_PATTERN.fullmatch(value) is None:
         return False
     try:
         return datetime.fromisoformat(value.replace("Z", "+00:00")).tzinfo is not None
@@ -113,9 +128,7 @@ def validate_shape(run: dict[str, Any]) -> None:
     require(set(run) == FIELDS, "Run fields do not match v1")
     require(run["contractVersion"] == CONTRACT, "Unsupported contract version")
     require(
-        isinstance(run["id"], str)
-        and re.fullmatch(r"[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}", run["id"])
-        is not None,
+        isinstance(run["id"], str) and UUID_PATTERN.fullmatch(run["id"]) is not None,
         "Invalid run identity",
     )
     require(
@@ -163,7 +176,7 @@ def validate_shape(run: dict[str, Any]) -> None:
             re.fullmatch(r"[a-z0-9-]+", asset["id"]) is not None
             and re.fullmatch(r"[a-z0-9-]+\.(svg|json|txt)", asset["name"]) is not None
             and is_hash(asset["sha256"])
-            and len(asset["content"]) <= 4096,
+            and utf16_length(asset["content"]) <= 4096,
             "Invalid asset identity, checksum, or size",
         )
     for key in ("checks", "attempts", "audit"):
@@ -236,7 +249,7 @@ def validate_shape(run: dict[str, Any]) -> None:
             isinstance(review, dict)
             and set(review) == {"summary", "findings"}
             and isinstance(review["summary"], str)
-            and 1 <= len(review["summary"]) <= 500
+            and 1 <= utf16_length(review["summary"]) <= 500
             and isinstance(review["findings"], list)
             and 1 <= len(review["findings"]) <= 10,
             "Invalid review",
@@ -247,7 +260,7 @@ def validate_shape(run: dict[str, Any]) -> None:
                 and set(finding) == {"assetId", "message", "severity"}
                 and isinstance(finding["assetId"], str)
                 and isinstance(finding["message"], str)
-                and 1 <= len(finding["message"]) <= 300
+                and 1 <= utf16_length(finding["message"]) <= 300
                 and finding["severity"] in {"info", "attention"},
                 "Invalid finding",
             )
@@ -507,6 +520,75 @@ def evaluate(case: Any) -> Result:
             or run["review"] is not None,
             "State requires reviewed evidence",
         )
+        if run["status"] in {"awaiting_approval", "approved", "completed", "rejected"}:
+            starts = [
+                i
+                for i, event in enumerate(run["audit"])
+                if event["event"] == "review.started"
+            ]
+            require(bool(starts) and bool(run["attempts"]), "Missing current review")
+            events = run["audit"][starts[-1] :]
+            require(
+                all(
+                    event["inputVersion"] == manifest["version"]
+                    and event["inputDigest"] == run["inputDigest"]
+                    for event in events
+                ),
+                "Current review belongs to another input",
+            )
+            attempts = [
+                event for event in events if event["event"] == "provider.attempt"
+            ]
+            last = run["attempts"][-1]
+            require(
+                bool(attempts)
+                and last["outcome"] == "valid"
+                and last["round"] == run["round"]
+                and attempts[-1]["result"] == f"{last['provider']}: valid",
+                "Current review has no successful provider",
+            )
+            requests = [
+                event for event in events if event["event"] == "approval.requested"
+            ]
+            require(
+                bool(requests) and requests[-1]["seq"] > attempts[-1]["seq"],
+                "Current review has no approval request after success",
+            )
+            decisions = [
+                event
+                for event in events
+                if event["event"]
+                in {
+                    "approval.requested",
+                    "approval.granted",
+                    "approval.rejected",
+                    "delivery.created",
+                    "delivery.failed",
+                }
+            ]
+            require(
+                decisions[-1]["event"]
+                in {
+                    "awaiting_approval": {"approval.requested"},
+                    "approved": {"approval.granted", "delivery.failed"},
+                    "completed": {"delivery.created"},
+                    "rejected": {"approval.rejected"},
+                }[run["status"]],
+                "State does not match the latest decision",
+            )
+            if run["status"] in {"approved", "completed", "rejected"}:
+                decision_type = (
+                    "approval.rejected"
+                    if run["status"] == "rejected"
+                    else "approval.granted"
+                )
+                approvals = [
+                    event for event in decisions if event["event"] == decision_type
+                ]
+                require(
+                    bool(approvals) and approvals[-1]["seq"] > requests[-1]["seq"],
+                    "Human decision precedes the current review request",
+                )
         if failure:
             require(
                 run["status"] == "failed"

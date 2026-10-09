@@ -43,7 +43,7 @@ python3 -m fieldcheck fixtures/baseline.jsonl
 
 The runtime remains independent: checked-in fixtures work without the sibling project. `fixtures/PROVENANCE.md` documents how they were produced, and [the exchange contract](docs/contract.md) explains canonical hashes and limits.
 
-Local verification: 25 tests passed on Python 3.14.8, baseline 9/9 accepted, and all 4 negative controls detected. Ruff lint/format and strict mypy checks pass. On 2026-10-09, [GitHub Actions](https://github.com/domizo/fieldcheck/actions/runs/37884067927) passed the same checks on Ubuntu with Python 3.11 and 3.14, including 25 tests per version. See [verification](docs/verification.md) and [dependencies](DEPENDENCIES.md).
+Current local verification: 37 tests passed on Python 3.14.8, baseline 9/9 accepted, and all 4 negative controls detected. Ruff lint/format and strict mypy checks pass. The [CI workflow](https://github.com/domizo/fieldcheck/actions/workflows/ci.yml) checks Ubuntu with Python 3.11 and 3.14. [Verification](docs/verification.md) records the initial 25-test CI run and the additional contract-validation regressions. See [dependencies](DEPENDENCIES.md) and the [technical walkthrough](docs/walkthrough.md) ([日本語](docs/walkthrough.ja.md)).
 
 Not implemented: live-model scoring, statistical quality estimation, human annotation, provider invocation, arbitrary JSON Schema interpretation, signed audit verification, storage access to downloaded bundles, and cloud reporting. The evaluator checks the exported **delivery manifest**; Switchyard's integration tests and download endpoint check actual bundle bytes.
 

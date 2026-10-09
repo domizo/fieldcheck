@@ -45,7 +45,7 @@ python3 -m fieldcheck fixtures/baseline.jsonl
 
 ## 確認済みの結果
 
-Python 3.14.8でテスト25件が成功し、ベースライン9件すべてを受け入れ、意図的に壊した4件すべてを検出しました。RuffによるLint・フォーマット確認と、厳格なmypy型チェックも通っています。2026年10月9日、Ubuntu上のPython 3.11・3.14でも[GitHub Actions](https://github.com/domizo/fieldcheck/actions/runs/37884067927)が成功しました。各バージョンでテスト25件を含む同じ検査が通っています。[検証記録](docs/verification.md)と[依存関係・開発用チェック](DEPENDENCIES.md)を参照してください。
+現在のローカル検証では、Python 3.14.8でテスト37件が成功し、ベースライン9件すべてを受け入れ、意図的に壊した4件すべてを検出しました。RuffによるLint・フォーマット確認と、厳格なmypy型チェックも通っています。[CIワークフロー](https://github.com/domizo/fieldcheck/actions/workflows/ci.yml)はUbuntu上のPython 3.11・3.14を検査します。[検証記録](docs/verification.md)には、初回CIの25件と、契約検証に追加した回帰テストを区別して記載しています。[依存関係・開発用チェック](DEPENDENCIES.md)と[日本語の技術解説](docs/walkthrough.ja.md)も参照してください。
 
 ## 未実装の範囲と制約
 
