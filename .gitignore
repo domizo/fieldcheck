@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+report*.json
+.DS_Store
+.mypy_cache/
+.ruff_cache/

@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "contractVersion": {
+      "type": "string",
+      "const": "switchyard.run.v1"
+    },
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+    },
+    "scenario": {
+      "type": "string",
+      "enum": [
+        "healthy",
+        "fallback",
+        "timeout",
+        "invalid",
+        "refusal",
+        "retry"
+      ]
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "reviewing",
+        "awaiting_approval",
+        "failed",
+        "rejected",
+        "approved",
+        "completed"
+      ]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+    },
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 2
+        },
+        "title": {
+          "type": "string",
+          "const": "Harbor launch kit"
+        },
+        "durationSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "assets": {
+          "minItems": 3,
+          "maxItems": 3,
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+$"
+              },
+              "name": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+\\.(svg|json|txt)$"
+              },
+              "content": {
+                "type": "string",
+                "maxLength": 4096
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-f0-9]{64}$"
+              },
+              "mediaType": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "content",
+              "sha256",
+              "mediaType"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "version",
+        "title",
+        "durationSeconds",
+        "assets"
+      ],
+      "additionalProperties": false
+    },
+    "inputDigest": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "assetId": {
+            "type": "string"
+          },
+          "passed": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "assetId",
+          "passed",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "review": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "summary": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            },
+            "findings": {
+              "minItems": 1,
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "assetId": {
+                    "type": "string"
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "severity": {
+                    "type": "string",
+                    "enum": [
+                      "info",
+                      "attention"
+                    ]
+                  }
+                },
+                "required": [
+                  "assetId",
+                  "message",
+                  "severity"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "summary",
+            "findings"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "provider": {
+            "type": "string",
+            "enum": [
+              "Atlas fixture",
+              "Cedar fixture"
+            ]
+          },
+          "outcome": {
+            "type": "string",
+            "enum": [
+              "valid",
+              "timeout",
+              "invalid_output",
+              "refusal",
+              "unavailable"
+            ]
+          },
+          "elapsedMs": {
+            "type": "number",
+            "minimum": 0
+          },
+          "round": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "provider",
+          "outcome",
+          "elapsedMs",
+          "round"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "round": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "failure": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "enum": [
+                "timeout",
+                "invalid_output",
+                "refusal",
+                "unavailable",
+                "interrupted",
+                "input_invalid",
+                "delivery_failed"
+              ]
+            },
+            "message": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "code",
+            "message"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "approval": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "inputVersion": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            },
+            "inputDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "at": {
+              "type": "string",
+              "format": "date-time",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+            }
+          },
+          "required": [
+            "inputVersion",
+            "inputDigest",
+            "at"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "delivery": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "directory": {
+              "type": "string"
+            },
+            "bundleDigest": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "sha256"
+                ],
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": [
+            "directory",
+            "bundleDigest",
+            "files"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "audit": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "event": {
+            "type": "string"
+          },
+          "inputVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "inputDigest": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "result": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "event",
+          "inputVersion",
+          "inputDigest",
+          "result"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "contractVersion",
+    "id",
+    "scenario",
+    "revision",
+    "status",
+    "createdAt",
+    "manifest",
+    "inputDigest",
+    "checks",
+    "review",
+    "attempts",
+    "round",
+    "failure",
+    "approval",
+    "delivery",
+    "audit"
+  ],
+  "additionalProperties": false
+}
